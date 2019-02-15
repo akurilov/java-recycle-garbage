@@ -1,0 +1,134 @@
+description = "Recycle frequently instantiated objects to reduce the garbage"
+
+buildscript {
+	repositories {
+		mavenCentral()
+	}
+}
+
+apply plugin: "java"
+apply plugin: "maven"
+apply plugin: "signing"
+group = "com.github.akurilov"
+version = "0.1.0"
+sourceCompatibility = 11
+targetCompatibility = 11
+
+ext {
+	moduleName = "com.github.akurilov.reduce.garbage"
+}
+
+repositories {
+	mavenCentral()
+}
+
+dependencies {
+	testCompile(
+		"junit:junit:4.12",
+	)
+}
+
+wrapper {
+	gradleVersion = "4.10.3"
+}
+
+test {
+	useJUnit()
+}
+
+jar {
+	manifest {
+		attributes (
+			"Automatic-Module-Name": moduleName,
+			"Implementation-Version": version,
+			"Implementation-Title": rootProject.name,
+		)
+	}
+	inputs.property("moduleName", moduleName)
+}
+
+task sourcesJar(type: Jar, dependsOn: classes) {
+	classifier = "sources"
+	from sourceSets.main.allSource
+}
+
+javadoc {
+	options.addStringOption("-module-path", classpath.asPath)
+}
+
+task javadocJar(type: Jar, dependsOn: javadoc) {
+	classifier = "javadoc"
+	from javadoc.destinationDir
+}
+
+artifacts {
+	archives jar
+	archives sourcesJar
+	archives javadocJar
+}
+
+signing {
+	required {
+		gradle.taskGraph.hasTask("uploadArchives")
+	}
+	sign configurations.archives
+}
+
+// see http://central.sonatype.org/pages/gradle.html for details
+uploadArchives {
+
+	def ossrhUsername = project.hasProperty("ossrhUsername") ?
+		project.property("ossrhUsername") : null
+	def ossrhPassword = project.hasProperty("ossrhPassword") ?
+		project.property("ossrhPassword") : null
+
+	repositories {
+		mavenDeployer {
+			beforeDeployment {
+				MavenDeployment deployment -> signing.signPom(deployment)
+			}
+
+			repository(url: "https://oss.sonatype.org/service/local/staging/deploy/maven2/") {
+				authentication(userName: ossrhUsername, password: ossrhPassword)
+			}
+
+			snapshotRepository(url: "https://oss.sonatype.org/content/repositories/snapshots/") {
+				authentication(userName: ossrhUsername, password: ossrhPassword)
+			}
+
+			pom {
+
+				name = rootProject.name
+				groupId = rootProject.group
+
+				project {
+					description = rootProject.description
+
+					url "https://github.com/akurilov/java-reduce-garbage"
+
+					scm {
+						connection "https://github.com/akurilov/java-reduce-garbage.git"
+						developerConnection "https://github.com/akurilov/java-reduce-garbage.git"
+						url "https://github.com/akurilov/java-reduce-garbage.git"
+					}
+
+					licenses {
+						license {
+							name "Apache License 2.0"
+							url "https://github.com/akurilov/java-reduce-garbage/blob/master/LICENSE"
+						}
+					}
+
+					developers {
+						developer {
+							id "akurilov"
+							name "Andrey Kurilov"
+							email "akurilov123@gmail.com"
+						}
+					}
+				}
+			}
+		}
+	}
+}
+
